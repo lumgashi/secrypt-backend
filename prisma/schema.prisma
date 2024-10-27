@@ -1,0 +1,43 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+
+model File {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  nanoID       String
+  fileName       String
+  fileType       MediaType   // "image", "video", "pdf", "doc", etc.
+  fileSize       Int      // Size in bytes for reference
+  s3Key          String   // Reference to the S3 file path
+  uploadedAt     DateTime @default(now())
+  ttl            BigInt   @default(60000)// Expiration timestamp in milliseconds
+  maxDownloads   Int      @default(1)      // The max number of downloads allowed
+  downloadCount  Int      @default(1)// Initialized with `maxDownloads`, decrements per download
+  isExpired      Boolean  @default(false) // Expiration flag
+  passwordHash   String?  // Hash for password protection
+  encryptionKey  String?  // Encryption key or indicator
+
+  @@map("files")
+
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  PDF
+  DOCUMENT
+  ARCHIVE
+  OTHER
+}
