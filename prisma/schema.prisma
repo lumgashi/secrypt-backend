@@ -19,10 +19,10 @@ model File {
   nanoID        String @unique
   fileName       String
   fileType       MediaType   // "image", "video", "pdf", "doc", etc.
-  fileSize       Int      // Size in bytes for reference
+  fileSize       Float      // Size in bytes for reference
   s3Key          String   // Reference to the S3 file path
   uploadedAt     DateTime @default(now())
-  ttl            BigInt   @default(180000)// Expiration timestamp in milliseconds
+  ttl            BigInt   @default(120000)// Expiration timestamp in milliseconds
   maxDownloads   Int      @default(3)      // The max number of downloads allowed
   downloadCount  Int      @default(3)// Initialized with `maxDownloads`, decrements per download
   isExpired      Boolean  @default(false) // Expiration flag

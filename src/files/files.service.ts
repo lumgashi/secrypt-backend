@@ -11,9 +11,9 @@ import { S3 } from 'aws-sdk';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../prisma/prisma.service';
 import { nanoid } from 'nanoid';
-import { GetFileDto } from './dto/get-one.dto';
 import { matchPassword } from 'src/utils/matchPassword';
 import { File } from '@prisma/client';
+import { convertFileSize } from 'src/utils/convertFileSize';
 
 @Injectable()
 export class FilesService {
@@ -29,6 +29,8 @@ export class FilesService {
     //console.log('hereeee', uploadFileDto?.fileType)
     console.log('hereeee', uploadFileDto);
     console.log('filee:', file);
+
+    const fileSize = convertFileSize(file.size);
     //const { fileType, maxDownloads, ttl } = uploadFileDto;
     let hashedPassword: string | null = null;
     let uploadedFile: any = null;
@@ -56,7 +58,7 @@ export class FilesService {
           nanoID: urlID,
           fileName: file.originalname,
           fileType: uploadFileDto.fileType,
-          fileSize: file.size,
+          fileSize: fileSize,
           s3Key: uploadedFile.Key,
           maxDownloads: uploadFileDto.maxDownloads,
           downloadCount: uploadFileDto.maxDownloads,
@@ -65,7 +67,7 @@ export class FilesService {
         },
       });
       console.log('newFile::', newFile);
-      const generatedUrl = `${this.config.get('baseURL')}/${newFile.nanoID}`;
+      //const generatedUrl = `${this.config.get('baseURL')}/${newFile.nanoID}`;
       return newFile;
     } catch (error) {
       console.log('error::', error);
@@ -131,6 +133,11 @@ export class FilesService {
     if (file.downloadCount <= 0 || file.isExpired) {
       throw new NotFoundException('Download limit reached or has expired');
     }
+
+    if (file.downloadCount === 0) {
+      throw new BadRequestException('Download limit reached');
+    }
+
     const isExpired = file.downloadCount - 1 === 0 ? true : false;
     await this.prisma.file.update({
       where: {
@@ -163,7 +170,7 @@ export class FilesService {
     return currentTimeinMiliseconds > expirationTime;
   }
 
-  // what this function does it to calculate the remaining time in minutes to pass to the Expires property of the pre-signed URL 
+  // what this function does it to calculate the remaining time in minutes to pass to the Expires property of the pre-signed URL
   private calculateRemainingTimeInMinutes(file: File): number {
     const currentTime = BigInt(Date.now()); // Current time as bigint in miliseconds
     const expirationTime = BigInt(file.uploadedAt.getTime()) + file.ttl; // Expiration time as bigint in miliseconds
@@ -173,6 +180,7 @@ export class FilesService {
     // Ensure remaining time is non-negative and convert to minutes
     const remainingMinutes =
       remainingTime > 0n ? Number(remainingTime / 60000n) : 0;
+    console.log('remainingMinutes::', remainingMinutes);
     return remainingMinutes; // Return the remaining time in minutes as a number
   }
 }
