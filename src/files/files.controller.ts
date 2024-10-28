@@ -3,15 +3,16 @@ import {
   Post,
   Body,
   Param,
-  Delete,
   UseInterceptors,
   UploadedFile,
   Controller,
   ParseFilePipe,
+  Query,
 } from '@nestjs/common';
 import { FilesService } from './files.service';
 import { UploadFileDto } from './dto/create-file.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { GetFileDto } from './dto/get-one.dto';
 
 @Controller('files')
 export class FilesController {
@@ -38,6 +39,19 @@ export class FilesController {
   ) {
     console.log('uploadFileDto', uploadFileDto);
     return this.filesService.create(file, uploadFileDto);
+  }
+
+  @Get('nanoId/:nanoId')
+  findByNanoId(@Param('nanoId') nanoId: string) {
+    return this.filesService.findByNanoId(nanoId);
+  }
+
+  @Get('/request-file-access')
+  requestFileAccess(@Query() getFileDto: GetFileDto) {
+    return this.filesService.requestFileAccess(
+      getFileDto.fileId,
+      getFileDto.password,
+    );
   }
 
   @Get(':id')

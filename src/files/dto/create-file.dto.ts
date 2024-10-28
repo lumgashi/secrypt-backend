@@ -7,13 +7,13 @@ export class UploadFileDto {
 
   @IsOptional()
   @IsInt()
-  @Min(1)
+  @Min(3)
   @Max(50)
   maxDownloads?: number;
 
   @IsOptional()
   @IsInt()
-  @Min(60000) // Minimum of 1 minute in milliseconds
+  @Min(180000) // Minimum of 1 minute in milliseconds
   @Max(86400000) // Maximum of 1 day in milliseconds
   ttl?: number;
 
