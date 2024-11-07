@@ -1,85 +1,66 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+<h1 align="center">Secrypt</h1>
+<p align="center">Secure, private, and controlled file sharing. Protect your files with optional password encryption, time-limited access, and download limitations.</p>
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+<h2>About Secrypt</h2>
+<p>Secrypt is a secure file-sharing platform built using NestJS, Prisma, and MongoDB with S3 file storage. Designed to prioritize privacy and control, Secrypt allows users to share files with expiration dates, download limits, and optional password protection.</p>
 
-## Description
+<h2>Features</h2>
+<ul>
+  <li>Supports multiple file types: images, videos, documents, PDFs, and archives</li>
+  <li>Set an expiration time or download limit for each file</li>
+  <li>Optional password protection for additional security</li>
+  <li>End-to-end encryption for secure file sharing (future update)</li>
+</ul>
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+<h2>Tech Stack</h2>
+<ul>
+  <li><b>NestJS</b> - Server framework for building scalable Node.js applications</li>
+  <li><b>Prisma</b> - ORM for MongoDB for seamless data management</li>
+  <li><b>MongoDB</b> - Database for storing file metadata</li>
+  <li><b>Amazon S3</b> - Cloud storage for managing files</li>
+</ul>
 
-## Project setup
+<h2>Installation</h2>
+<pre>
+<code>git clone https://github.com/your-username/secrypt.git
+cd secrypt
+npm install
+</code>
+</pre>
 
-```bash
-$ npm install
-```
+<h3>Environment Variables</h3>
+<p>Create a <code>.env</code> file in the root directory and add the following variables:</p>
+<pre>
+<code>AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_BUCKET_NAME=your_bucket_name
+DATABASE_URL=your_database_url
+BASE_URL=http://localhost:3000  <!-- or your deployment URL -->
+</code>
+</pre>
 
-## Compile and run the project
+<h2>Usage</h2>
+<ol>
+  <li>Run the server locally with <code>npm run start:dev</code>.</li>
+  <li>Use a tool like Postman or your client to test file upload, access, and download.</li>
+</ol>
 
-```bash
-# development
-$ npm run start
+<h2>Contributing</h2>
+<p>Contributions are welcome! Please open issues or submit pull requests for any improvements.</p>
 
-# watch mode
-$ npm run start:dev
+<h2>License</h2>
+<p>MIT License</p>
 
-# production mode
-$ npm run start:prod
-```
+<h2>Contact</h2>
+<p>For questions or suggestions, reach out at <a href="mailto:your-email@example.com">your-email@example.com</a></p>
 
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+</body>
+</html>
