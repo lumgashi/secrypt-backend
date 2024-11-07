@@ -66,21 +66,14 @@ export class FilesService {
           passwordHash: hashedPassword,
         },
       });
-      console.log('newFile::', newFile);
-      //const generatedUrl = `${this.config.get('baseURL')}/${newFile.nanoID}`;
-      return newFile;
+      const generatedUrl = `${this.config.get('baseURL')}/${newFile.nanoID}`;
+      return generatedUrl;
     } catch (error) {
-      console.log('error::', error);
       throw new InternalServerErrorException('Could not upload file', error);
     }
   }
 
-  findAll() {
-    return `This action returns all files`;
-  }
-
   async findByNanoId(nanoId: string) {
-    console.log('nanoId::', nanoId);
     const fileExists = await this.prisma.file.findUnique({
       where: {
         nanoID: nanoId,
@@ -101,18 +94,21 @@ export class FilesService {
   }
 
   async findOne(id: string) {
-    console.log('id::', id);
-    const fileExists = await this.prisma.file.findUnique({
-      where: {
-        id,
-      },
-    });
+    try {
+      const fileExists = await this.prisma.file.findUnique({
+        where: {
+          id,
+        },
+      });
 
-    if (!fileExists) {
-      throw new NotFoundException('File does not exist');
+      if (!fileExists) {
+        throw new NotFoundException('File does not exist');
+      }
+
+      return fileExists;
+    } catch (error) {
+      throw new InternalServerErrorException('Could not get file', error);
     }
-
-    return fileExists;
   }
 
   async requestFileAccess(fileId: string, password: string): Promise<string> {

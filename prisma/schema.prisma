@@ -16,7 +16,7 @@ datasource db {
 
 model File {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  nanoID        String @unique
+  nanoID         String @unique
   fileName       String
   fileType       MediaType   // "image", "video", "pdf", "doc", etc.
   fileSize       Float      // Size in bytes for reference
@@ -38,5 +38,4 @@ enum MediaType {
   PDF
   DOCUMENT
   ARCHIVE
-  OTHER
 }
