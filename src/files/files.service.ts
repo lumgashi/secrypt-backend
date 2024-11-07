@@ -26,10 +26,6 @@ export class FilesService {
     private readonly prisma: PrismaService,
   ) {}
   async create(file: Express.Multer.File, uploadFileDto: UploadFileDto) {
-    //console.log('hereeee', uploadFileDto?.fileType)
-    console.log('hereeee', uploadFileDto);
-    console.log('filee:', file);
-
     const fileSize = convertFileSize(file.size);
     //const { fileType, maxDownloads, ttl } = uploadFileDto;
     let hashedPassword: string | null = null;
@@ -46,10 +42,8 @@ export class FilesService {
         .promise();
 
       if (uploadFileDto?.password) {
+        hashedPassword = await argon2.hash(uploadFileDto.password);
       }
-      hashedPassword = await argon2.hash('1234');
-
-      console.log('uploadedFile::', uploadedFile);
 
       const urlID = nanoid();
       // Save file metadata to the database
@@ -112,7 +106,6 @@ export class FilesService {
   }
 
   async requestFileAccess(fileId: string, password: string): Promise<string> {
-    console.log('fileId::', fileId);
     const file = await this.findOne(fileId);
 
     // Check expiration
@@ -120,9 +113,14 @@ export class FilesService {
     if (hasFileTimeExpired) throw new BadRequestException('File link expired');
 
     // Check password
-    const isPasswordMatched = await matchPassword(file.passwordHash, password);
-    if (!isPasswordMatched) {
-      throw new UnauthorizedException('Incorrect password');
+    if (file.passwordHash !== null) {
+      const isPasswordMatched = await matchPassword(
+        file.passwordHash,
+        password,
+      );
+      if (!isPasswordMatched) {
+        throw new UnauthorizedException('Incorrect password');
+      }
     }
 
     // Check download limit
@@ -176,7 +174,6 @@ export class FilesService {
     // Ensure remaining time is non-negative and convert to minutes
     const remainingMinutes =
       remainingTime > 0n ? Number(remainingTime / 60000n) : 0;
-    console.log('remainingMinutes::', remainingMinutes);
     return remainingMinutes; // Return the remaining time in minutes as a number
   }
 }

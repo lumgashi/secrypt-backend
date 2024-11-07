@@ -18,11 +18,6 @@ import { GetFileDto } from './dto/get-one.dto';
 export class FilesController {
   constructor(private readonly filesService: FilesService) {}
 
-  @Get()
-  findAll() {
-    return this.filesService.findAll();
-  }
-
   @Post('/upload')
   @UseInterceptors(FileInterceptor('files'))
   async uploadFile(
@@ -35,9 +30,8 @@ export class FilesController {
       }),
     )
     file: Express.Multer.File,
-    @Body() uploadFileDto: UploadFileDto, // Bind the DTO separately
+    @Body() uploadFileDto: UploadFileDto,
   ) {
-    console.log('uploadFileDto', uploadFileDto);
     return this.filesService.create(file, uploadFileDto);
   }
 
