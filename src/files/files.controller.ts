@@ -13,6 +13,7 @@ import { FilesService } from './files.service';
 import { UploadFileDto } from './dto/create-file.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { GetFileDto } from './dto/get-one.dto';
+import { Response } from 'express';
 
 @Controller('files')
 export class FilesController {
@@ -51,5 +52,10 @@ export class FilesController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.filesService.findOne(id);
+  }
+
+  @Get('/download/:id')
+  downloadFile(@Param('id') id: string, res: Response) {
+    return this.filesService.downloadFile(id, res);
   }
 }

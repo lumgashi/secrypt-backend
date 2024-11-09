@@ -14,6 +14,7 @@ import { nanoid } from 'nanoid';
 import { matchPassword } from 'src/utils/matchPassword';
 import { File } from '@prisma/client';
 import { convertFileSize } from 'src/utils/convertFileSize';
+import { Response } from 'express';
 
 @Injectable()
 export class FilesService {
@@ -132,21 +133,57 @@ export class FilesService {
       throw new BadRequestException('Download limit reached');
     }
 
-    const isExpired = file.downloadCount - 1 === 0 ? true : false;
-    await this.prisma.file.update({
-      where: {
-        id: file.id,
-      },
-      data: {
-        downloadCount: file.downloadCount - 1,
-        isExpired,
-      },
-    });
+    // const isExpired = file.downloadCount - 1 === 0 ? true : false;
+    // await this.prisma.file.update({
+    //   where: {
+    //     id: file.id,
+    //   },
+    //   data: {
+    //     downloadCount: file.downloadCount - 1,
+    //     isExpired,
+    //   },
+    // });
     const data = {
-      url: this.generatePresignedUrl(file),
+      downloadCount: file.downloadCount,
+      ttl: file.ttl,
+      uploadedAt: file.uploadedAt,
+      fileType: file.fileType,
+      fileSize: file.fileSize,
+      maxDownloads: file.maxDownloads,
+      fileName: file.fileName,
     };
     // If everything is valid, generate a pre-signed URL
     return data;
+  }
+
+  async downloadFile(fileId: string, res: Response): Promise<void> {
+    // Step 1: Fetch file metadata from the database
+    const file = await this.prisma.file.findUnique({
+      where: { id: fileId },
+    });
+
+    if (!file) {
+      throw new NotFoundException('File does not exist');
+    }
+
+    // Step 2: Use the s3Key from the file metadata to get the file from S3
+    const s3Stream = this.s3Client
+      .getObject({
+        Bucket: this.config.get('AWS_BUCKET_NAME'),
+        Key: file.s3Key,
+      })
+      .createReadStream();
+
+    // Step 3: Set headers for file download in the response
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${file.fileName}"`,
+    );
+    const mimeType = `${file}`.split('.')[1];
+    res.setHeader('Content-Type', mimeType);
+
+    // Step 4: Stream the file to the client
+    s3Stream.pipe(res);
   }
 
   private generatePresignedUrl(file: File): any {
