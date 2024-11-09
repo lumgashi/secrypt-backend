@@ -151,6 +151,7 @@ export class FilesService {
       fileSize: file.fileSize,
       maxDownloads: file.maxDownloads,
       fileName: file.fileName,
+      fileId: file.id,
     };
     // If everything is valid, generate a pre-signed URL
     return data;
