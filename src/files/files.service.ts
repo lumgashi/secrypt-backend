@@ -142,9 +142,11 @@ export class FilesService {
         isExpired,
       },
     });
-
+    const data = {
+      url: this.generatePresignedUrl(file),
+    };
     // If everything is valid, generate a pre-signed URL
-    return this.generatePresignedUrl(file);
+    return data;
   }
 
   private generatePresignedUrl(file: File): any {
@@ -154,7 +156,9 @@ export class FilesService {
       // calculate the remaining time in minutes
       Expires: this.calculateRemainingTimeInMinutes(file) * 60,
     });
-    return { data: url };
+
+    // Return as a JSON object with a defined key
+    return { presignedUrl: url };
   }
 
   private isFileExpired(file: File): boolean {
