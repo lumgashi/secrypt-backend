@@ -105,7 +105,7 @@ export class FilesService {
     }
   }
 
-  async requestFileAccess(fileId: string, password: string): Promise<string> {
+  async requestFileAccess(fileId: string, password: string) {
     const file = await this.findOne(fileId);
 
     // Check expiration
@@ -147,13 +147,14 @@ export class FilesService {
     return this.generatePresignedUrl(file);
   }
 
-  private generatePresignedUrl(file: File): string {
-    return this.s3Client.getSignedUrl('getObject', {
+  private generatePresignedUrl(file: File): any {
+    const url = this.s3Client.getSignedUrl('getObject', {
       Bucket: this.config.get('AWS_BUCKET_NAME'),
       Key: file.s3Key,
       // calculate the remaining time in minutes
       Expires: this.calculateRemainingTimeInMinutes(file) * 60,
     });
+    return { data: url };
   }
 
   private isFileExpired(file: File): boolean {
