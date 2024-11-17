@@ -9,7 +9,6 @@ import {
   ParseFilePipe,
   Query,
   Res,
-  FileTypeValidator,
   MaxFileSizeValidator,
 } from '@nestjs/common';
 import { FilesService } from './files.service';
@@ -17,6 +16,8 @@ import { UploadFileDto } from './dto/create-file.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { GetFileDto } from './dto/get-one.dto';
 import { Response } from 'express';
+import { FileTypePipe } from 'src/utils/FilePipe';
+import { MIME_TYPES_ARRAY } from 'src/utils/mimetypes';
 
 @Controller('files')
 export class FilesController {
@@ -35,8 +36,8 @@ export class FilesController {
           }),
 
           // File type validator: Allow specific formats
-          new FileTypeValidator({
-            fileType: /\.(doc|docx|jpeg|jpg|png|zip|rar|pdf|mp4|mov|avi|mkv)$/,
+          new FileTypePipe({
+            acceptableTypes: [...MIME_TYPES_ARRAY],
           }),
         ],
       }),
