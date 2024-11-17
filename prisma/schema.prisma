@@ -36,6 +36,9 @@ enum MediaType {
   IMAGE
   VIDEO
   PDF
+  ZIP
+  RAR
+  MSWORD
   DOCUMENT
   ARCHIVE
 }

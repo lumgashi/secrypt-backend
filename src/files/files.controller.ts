@@ -8,6 +8,9 @@ import {
   Controller,
   ParseFilePipe,
   Query,
+  Res,
+  FileTypeValidator,
+  MaxFileSizeValidator,
 } from '@nestjs/common';
 import { FilesService } from './files.service';
 import { UploadFileDto } from './dto/create-file.dto';
@@ -25,8 +28,16 @@ export class FilesController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          // new MaxFileSizeValidator({ maxSize: 1000 }),
-          // new FileTypeValidator({ fileType: 'image/jpeg' }),
+          // Max size validator: 2GB (2 * 1024 * 1024 * 1024 bytes)
+          new MaxFileSizeValidator({
+            maxSize: 2 * 1024 * 1024 * 1024,
+            message: 'The file size must not exceed 2GB',
+          }),
+
+          // File type validator: Allow specific formats
+          new FileTypeValidator({
+            fileType: /\.(doc|docx|jpeg|jpg|png|zip|rar|pdf|mp4|mov|avi|mkv)$/,
+          }),
         ],
       }),
     )
@@ -55,7 +66,7 @@ export class FilesController {
   }
 
   @Get('/download/:id')
-  downloadFile(@Param('id') id: string, res: Response) {
+  async downloadFile(@Param('id') id: string, @Res() res: Response) {
     return this.filesService.downloadFile(id, res);
   }
 }

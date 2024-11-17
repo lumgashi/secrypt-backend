@@ -15,6 +15,8 @@ import { matchPassword } from 'src/utils/matchPassword';
 import { File } from '@prisma/client';
 import { convertFileSize } from 'src/utils/convertFileSize';
 import { Response } from 'express';
+import mime from 'mime';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class FilesService {
@@ -47,7 +49,6 @@ export class FilesService {
       }
 
       const urlID = nanoid();
-      // Save file metadata to the database
       const newFile = await this.prisma.file.create({
         data: {
           nanoID: urlID,
@@ -132,17 +133,6 @@ export class FilesService {
     if (file.downloadCount === 0) {
       throw new BadRequestException('Download limit reached');
     }
-
-    // const isExpired = file.downloadCount - 1 === 0 ? true : false;
-    // await this.prisma.file.update({
-    //   where: {
-    //     id: file.id,
-    //   },
-    //   data: {
-    //     downloadCount: file.downloadCount - 1,
-    //     isExpired,
-    //   },
-    // });
     const data = {
       downloadCount: file.downloadCount,
       ttl: file.ttl,
@@ -153,50 +143,67 @@ export class FilesService {
       fileName: file.fileName,
       fileId: file.id,
     };
-    // If everything is valid, generate a pre-signed URL
+
     return data;
   }
 
   async downloadFile(fileId: string, res: Response): Promise<void> {
-    // Step 1: Fetch file metadata from the database
-    const file = await this.prisma.file.findUnique({
-      where: { id: fileId },
-    });
+    try {
+      const file = await this.prisma.file.findUnique({
+        where: { id: fileId },
+      });
 
-    if (!file) {
-      throw new NotFoundException('File does not exist');
+      if (!file) {
+        throw new NotFoundException('File does not exist');
+      }
+
+      if (!file.fileName) {
+        throw new Error('File name is missing in the database');
+      }
+
+      // Determine MIME type
+      const mimeType =
+        mime?.lookup(file.fileName) || 'application/octet-stream';
+
+      //  Use the s3Key from the file metadata to get the file from S3
+      const s3Stream = this.s3Client
+        .getObject({
+          Bucket: this.config.get('AWS_BUCKET_NAME'),
+          Key: file.s3Key,
+        })
+        .createReadStream();
+
+      // Error handling for S3 stream
+      s3Stream.on('error', (err) => {
+        console.error('Error streaming file from S3:', err.message);
+        res
+          .status(500)
+          .send('Internal Server Error while downloading the file');
+      });
+
+      // Step 5: Set headers for file download
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${file.fileName}"`,
+      );
+      res.setHeader('Content-Type', mimeType);
+
+      const isExpired = file.downloadCount - 1 === 0 ? true : false;
+      await this.prisma.file.update({
+        where: {
+          id: file.id,
+        },
+        data: {
+          downloadCount: { decrement: 1 },
+          isExpired,
+        },
+      });
+
+      // Step 6: Stream the file to the client
+      s3Stream.pipe(res);
+    } catch (error) {
+      throw new InternalServerErrorException('Could not download file', error);
     }
-
-    // Step 2: Use the s3Key from the file metadata to get the file from S3
-    const s3Stream = this.s3Client
-      .getObject({
-        Bucket: this.config.get('AWS_BUCKET_NAME'),
-        Key: file.s3Key,
-      })
-      .createReadStream();
-
-    // Step 3: Set headers for file download in the response
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${file.fileName}"`,
-    );
-    const mimeType = `${file}`.split('.')[1];
-    res.setHeader('Content-Type', mimeType);
-
-    // Step 4: Stream the file to the client
-    s3Stream.pipe(res);
-  }
-
-  private generatePresignedUrl(file: File): any {
-    const url = this.s3Client.getSignedUrl('getObject', {
-      Bucket: this.config.get('AWS_BUCKET_NAME'),
-      Key: file.s3Key,
-      // calculate the remaining time in minutes
-      Expires: this.calculateRemainingTimeInMinutes(file) * 60,
-    });
-
-    // Return as a JSON object with a defined key
-    return { presignedUrl: url };
   }
 
   private isFileExpired(file: File): boolean {
@@ -207,16 +214,39 @@ export class FilesService {
     return currentTimeinMiliseconds > expirationTime;
   }
 
-  // what this function does it to calculate the remaining time in minutes to pass to the Expires property of the pre-signed URL
-  private calculateRemainingTimeInMinutes(file: File): number {
-    const currentTime = BigInt(Date.now()); // Current time as bigint in miliseconds
-    const expirationTime = BigInt(file.uploadedAt.getTime()) + file.ttl; // Expiration time as bigint in miliseconds
+  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  async deleteExpiredFiles() {
+    const currentTime = new Date(Date.now());
+    const currentTimeinMiliseconds = currentTime.getTime();
+    // Step 1: Fetch files that might need deletion based on initial conditions
+    const files = await this.prisma.file.findMany({
+      where: {
+        OR: [
+          { isExpired: true },
+          { downloadCount: 0 },
+          { ttl: { lt: currentTimeinMiliseconds } },
+        ],
+      },
+    });
 
-    const remainingTime = expirationTime - currentTime; // Remaining time in milliseconds as bigint
-
-    // Ensure remaining time is non-negative and convert to minutes
-    const remainingMinutes =
-      remainingTime > 0n ? Number(remainingTime / 60000n) : 0;
-    return remainingMinutes; // Return the remaining time in minutes as a number
+    // Step 4: Delete the files
+    for (const file of files) {
+      try {
+        // Delete the object from S3
+        await this.s3Client
+          .deleteObject({
+            Bucket: this.config.get('AWS_BUCKET_NAME'),
+            Key: file.s3Key,
+          })
+          .promise();
+        console.log(
+          `Successfully deleted file: ${file.fileName} from S3 and database.`,
+        );
+      } catch (error) {
+        console.error(
+          `Failed to delete file: ${file.fileName}. Error: ${error.message}`,
+        );
+      }
+    }
   }
 }
