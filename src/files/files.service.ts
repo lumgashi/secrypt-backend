@@ -7,7 +7,13 @@ import {
 } from '@nestjs/common';
 import { UploadFileDto } from './dto/create-file.dto';
 import { ConfigService } from '@nestjs/config';
-import { S3 } from 'aws-sdk';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  ObjectCannedACL,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../prisma/prisma.service';
 import { nanoid } from 'nanoid';
@@ -15,15 +21,19 @@ import { matchPassword } from 'src/utils/matchPassword';
 import { File } from '@prisma/client';
 import { convertFileSize } from 'src/utils/convertFileSize';
 import { Response } from 'express';
-import mime from 'mime';
+import * as mime from 'mime-types';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class FilesService {
-  private readonly s3Client = new S3({
-    accessKeyId: this.config.get('AWS_ACCESS_KEY_ID'),
-    secretAccessKey: this.config.get('AWS_SECRET_ACCESS_KEY'),
+  private readonly s3Client = new S3Client({
+    credentials: {
+      accessKeyId: this.config.get('AWS_ACCESS_KEY_ID'),
+      secretAccessKey: this.config.get('AWS_SECRET_ACCESS_KEY'),
+    },
+    region: this.config.get('AWS_REGION'),
   });
+
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
@@ -32,18 +42,16 @@ export class FilesService {
     const fileSize = convertFileSize(file.size);
     //const { fileType, maxDownloads, ttl } = uploadFileDto;
     let hashedPassword: string | null = null;
-    let uploadedFile: any = null;
     try {
-      uploadedFile = await this.s3Client
-        .upload({
-          Bucket: this.config.get('AWS_BUCKET_NAME'),
-          Body: file.buffer,
-          Key: file.originalname,
-          ACL: 'public-read',
-          ContentDisposition: 'inline',
-        })
-        .promise();
+      const command = new PutObjectCommand({
+        Bucket: this.config.get('AWS_BUCKET_NAME'),
+        Key: file.originalname,
+        Body: file.buffer,
+        ACL: ObjectCannedACL.public_read,
+        ContentDisposition: 'inline',
+      });
 
+      await this.s3Client.send(command);
       if (uploadFileDto?.password) {
         hashedPassword = await argon2.hash(uploadFileDto.password);
       }
@@ -55,7 +63,7 @@ export class FilesService {
           fileName: file.originalname,
           fileType: uploadFileDto.fileType,
           fileSize: fileSize,
-          s3Key: uploadedFile.Key,
+          s3Key: file.originalname,
           maxDownloads: uploadFileDto.maxDownloads,
           downloadCount: uploadFileDto.maxDownloads,
           ttl: uploadFileDto.ttl,
@@ -156,7 +164,6 @@ export class FilesService {
       if (!file) {
         throw new NotFoundException('File does not exist');
       }
-
       if (!file.fileName) {
         throw new Error('File name is missing in the database');
       }
@@ -165,21 +172,27 @@ export class FilesService {
       const mimeType =
         mime?.lookup(file.fileName) || 'application/octet-stream';
 
-      //  Use the s3Key from the file metadata to get the file from S3
-      const s3Stream = this.s3Client
-        .getObject({
-          Bucket: this.config.get('AWS_BUCKET_NAME'),
-          Key: file.s3Key,
-        })
-        .createReadStream();
+      // Use the s3Key from the file metadata to get the file from S3
+      const command = new GetObjectCommand({
+        Bucket: this.config.get('AWS_BUCKET_NAME'),
+        Key: file.s3Key,
+      });
 
-      // Error handling for S3 stream
-      s3Stream.on('error', (err) => {
-        console.error('Error streaming file from S3:', err.message);
+      let s3Response;
+      try {
+        s3Response = await this.s3Client.send(command);
+      } catch (err) {
+        console.error('Error retrieving file from S3:', err.message);
         res
           .status(500)
           .send('Internal Server Error while downloading the file');
-      });
+        return;
+      }
+
+      // Check if the response Body exists
+      if (!s3Response.Body) {
+        throw new Error('No data found in S3 object');
+      }
 
       // Step 5: Set headers for file download
       res.setHeader(
@@ -188,7 +201,8 @@ export class FilesService {
       );
       res.setHeader('Content-Type', mimeType);
 
-      const isExpired = file.downloadCount - 1 === 0 ? true : false;
+      // Update file metadata in the database
+      const isExpired = file.downloadCount - 1 === 0;
       await this.prisma.file.update({
         where: {
           id: file.id,
@@ -200,7 +214,14 @@ export class FilesService {
       });
 
       // Step 6: Stream the file to the client
+      const s3Stream = s3Response.Body as NodeJS.ReadableStream;
       s3Stream.pipe(res);
+
+      // Handle stream errors
+      s3Stream.on('error', (err) => {
+        console.error('Error streaming file from S3:', err.message);
+        res.status(500).send('Internal Server Error while streaming the file');
+      });
     } catch (error) {
       throw new InternalServerErrorException('Could not download file', error);
     }
@@ -232,13 +253,14 @@ export class FilesService {
     // Step 4: Delete the files
     for (const file of files) {
       try {
-        // Delete the object from S3
-        await this.s3Client
-          .deleteObject({
-            Bucket: this.config.get('AWS_BUCKET_NAME'),
-            Key: file.s3Key,
-          })
-          .promise();
+        // Create and send DeleteObjectCommand
+        const command = new DeleteObjectCommand({
+          Bucket: this.config.get('AWS_BUCKET_NAME'),
+          Key: file.s3Key,
+        });
+
+        await this.s3Client.send(command);
+
         console.log(
           `Successfully deleted file: ${file.fileName} from S3 and database.`,
         );
